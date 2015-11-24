@@ -3,18 +3,39 @@ from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
 currentFileDir = os.getcwd()
+CurrentDate = datetime.date.today()
 
 movieList = []
 
+def monthTranslate(month):
+    months = {'Jan.': 1,
+              'Feb.': 2,
+              'Mar.': 3,
+              'Apr.': 4,
+              'May': 5,
+              'June': 6,
+              'July': 7,
+              'Aug.': 8,
+              'Sep.': 9,
+              'Oct.': 10,
+              'Nov.': 11,
+              'Dec.': 12}
+    return months[month]
+
 def parsePageForShowInfo(showID):
     """Pull show information from IMDB"""
-
-    """get the number of seasons/newest season"""
     show = {}
-    SeasonList = []
+
+    """get show name"""
+    show['Name'] = "ShowName"
     mainPageURLString = 'http://www.imdb.com/title/%s' % (showID)
     IMDBShowMainPage = urlopen(mainPageURLString)
-    soup = BeautifulSoup(IMDBShowMainPage)
+    soup = BeautifulSoup(IMDBShowMainPage, 'html.parser')
+    #titleString = soup.title.string
+    #print(titleString)
+
+    """get the number of seasons/newest season"""
+    SeasonList = []
     for link in soup.find_all('a'):
         linkString = link.get('href')
         if type(linkString) == str:
@@ -23,14 +44,50 @@ def parsePageForShowInfo(showID):
                 SeasonList.append(int(linkStringSplit[-1]))
     SeasonList.sort()
     show['Most Recent Season'] = SeasonList[-1]
-    print(show)
 
     """Get the airdate for the next episode"""
+    airdates = []
+    bestDate = []
     showSeasonURLString = 'http://www.imdb.com/title/%s/episodes?season=%d' % (showID, show['Most Recent Season'])
     IMDBShowSeasonPage = urlopen(showSeasonURLString)
-    soup = BeautifulSoup(IMDBShowSeasonPage)
-    for link in soup.find_all('a'):
-        pass
+    soup = BeautifulSoup(IMDBShowSeasonPage, 'html.parser')
+    for date in soup.find_all('div', class_ = 'airdate'):
+        year = 1
+        month = 1
+        day = 1
+        dateString = date.string.strip()
+        splitDate = dateString.split(' ')
+        if len(splitDate) == 3:
+            month = monthTranslate(splitDate[0])
+            day = int(splitDate[1])
+            year = int(splitDate[2])
+            if len(bestDate) < 3:
+                bestDate = [year, month, day]
+                airdates.append(datetime.date(year, month, day))
+        elif len(splitDate) == 2:
+            month = monthTranslate(splitDate[0])
+            year = int(splitDate[1])
+            if len(bestDate) < 2:
+                bestDate = [year, month]
+                airdates.append(datetime.date(year, month, day))
+        elif len(splitDate) == 1:
+            year = int(splitDate[0])
+            if len(bestDate) < 1:
+                bestDate = [year]
+                airdates.append(datetime.date(year, month, day))
+
+    bestDateDelta = CurrentDate - airdates[0]
+    show['Air Date'] = airdates[0]
+    for date in airdates:
+        delta = CurrentDate - date
+        if (CurrentDate > date):
+            continue
+        elif (date - CurrentDate) < bestDateDelta:
+            bestDateDelta = delta
+            show['Air Date'] = date
+            continue
+
+    print("The next episode of %s airs on %s." % (show['Name'], str(show['Air Date'])))
     return show
 
 def addShowToList(show):
@@ -43,8 +100,6 @@ if 'showlist.txt' in currentFileDir:
         for movie in savedFile:
             movieList.append(movie)
 
-CurrentDate = datetime.date.today()
-print(str(CurrentDate))
 
 ShowDates = {}
 
