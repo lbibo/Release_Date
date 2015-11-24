@@ -1,4 +1,5 @@
-﻿import datetime, os, urllib
+﻿import datetime, os
+from urllib.request import urlopen
 from bs4 import BeautifulSoup
 
 currentFileDir = os.getcwd()
@@ -6,17 +7,31 @@ currentFileDir = os.getcwd()
 movieList = []
 
 def parsePageForShowInfo(showID):
-    show = []
+    """Pull show information from IMDB"""
+
+    """get the number of seasons/newest season"""
+    show = {}
     SeasonList = []
     mainPageURLString = 'http://www.imdb.com/title/%s' % (showID)
-    IMDBShowMainPage = urllib.request.urlopen(mainPageURLString)
+    IMDBShowMainPage = urlopen(mainPageURLString)
     soup = BeautifulSoup(IMDBShowMainPage)
     for link in soup.find_all('a'):
         linkString = link.get('href')
-        print(linkString)
-    #    if ('/title/%s/episodes?season=' % showID) in linkString:
-    #        SeasonList.append(linkString[-1])
-    #return show
+        if type(linkString) == str:
+            if ('/title/%s/episodes?season=' % showID) in linkString:
+                linkStringSplit = linkString.split('_')
+                SeasonList.append(int(linkStringSplit[-1]))
+    SeasonList.sort()
+    show['Most Recent Season'] = SeasonList[-1]
+    print(show)
+
+    """Get the airdate for the next episode"""
+    showSeasonURLString = 'http://www.imdb.com/title/%s/episodes?season=%d' % (showID, show['Most Recent Season'])
+    IMDBShowSeasonPage = urlopen(showSeasonURLString)
+    soup = BeautifulSoup(IMDBShowSeasonPage)
+    for link in soup.find_all('a'):
+        pass
+    return show
 
 def addShowToList(show):
     return
