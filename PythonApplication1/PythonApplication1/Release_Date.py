@@ -1,8 +1,27 @@
-﻿import datetime, os
+﻿import datetime, os, urllib
+from bs4 import BeautifulSoup
 
 currentFileDir = os.getcwd()
 
 movieList = []
+
+def parsePageForShowInfo(showID):
+    show = []
+    SeasonList = []
+    mainPageURLString = 'http://www.imdb.com/title/%s' % (showID)
+    IMDBShowMainPage = urllib.request.urlopen(mainPageURLString)
+    soup = BeautifulSoup(IMDBShowMainPage)
+    for link in soup.find_all('a'):
+        linkString = link.get('href')
+        print(linkString)
+    #    if ('/title/%s/episodes?season=' % showID) in linkString:
+    #        SeasonList.append(linkString[-1])
+    #return show
+
+def addShowToList(show):
+    return
+
+parsePageForShowInfo('tt0944947')
 
 if 'showlist.txt' in currentFileDir:
     with open('showlist.txt') as savedFile:
