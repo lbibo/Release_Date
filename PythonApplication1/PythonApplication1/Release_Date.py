@@ -58,21 +58,21 @@ def parsePageForShowInfo(showID, showName):
         dateString = date.string.strip()
         splitDate = dateString.split(' ')
         if len(splitDate) == 3:
-            month = monthTranslate(splitDate[0])
-            day = int(splitDate[1])
+            day = int(splitDate[0])
+            month = monthTranslate(splitDate[1])
             year = int(splitDate[2])
-            if len(bestDate) < 3:
+            if len(bestDate) <= 3:
                 bestDate = [year, month, day]
                 airdates.append(datetime.date(year, month, day))
         elif len(splitDate) == 2:
             month = monthTranslate(splitDate[0])
             year = int(splitDate[1])
-            if len(bestDate) < 2:
+            if len(bestDate) <= 2:
                 bestDate = [year, month]
                 airdates.append(datetime.date(year, month, day))
         elif len(splitDate) == 1:
             year = int(splitDate[0])
-            if len(bestDate) < 1:
+            if len(bestDate) <= 1:
                 bestDate = [year]
                 airdates.append(datetime.date(year, month, day))
 
@@ -88,6 +88,7 @@ def parsePageForShowInfo(showID, showName):
             continue
 
     print("The next episode of %s airs on %s." % (show['Name'], str(show['Air Date'])))
+    print("That is in %s days.\n" % str((show['Air Date'] - CurrentDate).days))
     return show
 
 #def addShowToList(show):
@@ -110,7 +111,9 @@ seriesList = [
     ('tt0944947', 'Game of Thrones'),
     ('tt4159076', 'Dark Matter'),
     ('tt1486217', 'Archer'),
-    ('tt3339966', 'Unbreakable Kimmy Schmidt')
+    ('tt3339966', 'Unbreakable Kimmy Schmidt'),
+    ('tt1520211', 'The Walking Dead'),
+    ('tt2467372', 'Brooklyn Nine-Nine')
     ]
 
 for series in seriesList:
