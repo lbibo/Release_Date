@@ -5,8 +5,6 @@ from bs4 import BeautifulSoup
 currentFileDir = os.getcwd()
 CurrentDate = datetime.date.today()
 
-movieList = []
-
 def monthTranslate(month):
     months = {'Jan.': 1,
               'Feb.': 2,
@@ -22,17 +20,19 @@ def monthTranslate(month):
               'Dec.': 12}
     return months[month]
 
-def parsePageForShowInfo(showID):
+def parsePageForShowInfo(showID, showName):
     """Pull show information from IMDB"""
     show = {}
 
-    """get show name"""
-    show['Name'] = "ShowName"
+    """get show name (doesn't work)"""
+    show['Name'] = showName
     mainPageURLString = 'http://www.imdb.com/title/%s' % (showID)
     IMDBShowMainPage = urlopen(mainPageURLString)
     soup = BeautifulSoup(IMDBShowMainPage, 'html.parser')
-    #titleString = soup.title.string
-    #print(titleString)
+    #for title in soup.find_all('title'):
+    #    titleString = title
+    #    titleString = str(titleString[:38])
+    #    print(titleString)
 
     """get the number of seasons/newest season"""
     SeasonList = []
@@ -90,54 +90,40 @@ def parsePageForShowInfo(showID):
     print("The next episode of %s airs on %s." % (show['Name'], str(show['Air Date'])))
     return show
 
-def addShowToList(show):
-    return
-
-parsePageForShowInfo('tt0944947')
+#def addShowToList(show):
+#    return
 
 if 'showlist.txt' in currentFileDir:
     with open('showlist.txt') as savedFile:
         for movie in savedFile:
             movieList.append(movie)
 
+#while True:
+#    response = input("Add a new movie or tv show?\n(Doesn't work at the moment)").lower()
+#    if response == 'y' or response == 'yes':
+#        newMovie = input("What show?  ").lower()
+#        break
+#    else:
+#        break
 
-ShowDates = {}
+seriesList = [
+    ('tt0944947', 'Game of Thrones'),
+    ('tt4159076', 'Dark Matter'),
+    ('tt1486217', 'Archer'),
+    ('tt3339966', 'Unbreakable Kimmy Schmidt')
+    ]
 
-while True:
-    response = input("Add a new movie or tv show?\n(Doesn't work at the moment)").lower()
-    if response == 'y' or response == 'yes':
-        newMovie = input("What show?  ").lower()
-        break
-    else:
-        break
+for series in seriesList:
+    parsePageForShowInfo(series[0], series[1])
 
+#deltaSort = []
 
-GameOfThrones = datetime.date(2016, 5, 1)
-ShowDates['Game of Thrones'] = GameOfThrones
+#for show in ShowDates.keys():
+#    delta = ShowDates[show] - CurrentDate
+#    deltaSort.append((delta, show))
 
-Archer = datetime.date(2016, 1, 1)
-ShowDates['Archer'] = Archer
+#sortedShows = sorted(deltaSort)
 
-SiliconValley = datetime.date(2016, 4, 1)
-ShowDates['Silicon Valley'] = SiliconValley
-
-Unbreakable = datetime.date(2016, 3, 1)
-ShowDates['Unbreakable Kimmy Schmidt'] = Unbreakable
-
-DarkMatter = datetime.date(2016, 1, 1)
-ShowDates['Dark Matter'] = DarkMatter
-
-StarWars = datetime.date(2015, 12, 14)
-ShowDates['Star Wars Ep. VII'] = StarWars
-
-deltaSort = []
-
-for show in ShowDates.keys():
-    delta = ShowDates[show] - CurrentDate
-    deltaSort.append((delta, show))
-
-sortedShows = sorted(deltaSort)
-
-for show in sortedShows:
-    print('\n', show[1], ': ', ShowDates[show[1]])
-    print('Starts in: ', show[0])
+#for show in sortedShows:
+#    print('\n', show[1], ': ', ShowDates[show[1]])
+#    print('Starts in: ', show[0])
