@@ -1,5 +1,5 @@
-﻿import datetime, os
-from urllib.request import urlopen
+﻿import datetime, os, json
+from urllib import request
 from bs4 import BeautifulSoup
 
 currentFileDir = os.getcwd()
@@ -23,11 +23,17 @@ def monthTranslate(month):
 def parsePageForShowInfo(showID, showName):
     """Pull show information from IMDB"""
     show = {}
+    omdbresponse = request.urlopen('http://www.omdbapi.com/?i=%s&y=plot=short&r=json' % (showID))
+    readResponse = str(omdbresponse.read())
+    readResponse = readResponse[2:]
+    emDashStripper = readResponse.find('\xe2\x80\x93')
+    fixedResponse = readResponse[:emDashStripper] + '-' + readResponse[(emDashStripper + 11):]
+    print(readResponse[39:50])
 
     """get show name (doesn't work)"""
     show['Name'] = showName
     mainPageURLString = 'http://www.imdb.com/title/%s' % (showID)
-    IMDBShowMainPage = urlopen(mainPageURLString)
+    IMDBShowMainPage = request.urlopen(mainPageURLString)
     soup = BeautifulSoup(IMDBShowMainPage, 'html.parser')
     #for title in soup.find_all('title'):
     #    titleString = title
@@ -49,7 +55,7 @@ def parsePageForShowInfo(showID, showName):
     airdates = []
     bestDate = []
     showSeasonURLString = 'http://www.imdb.com/title/%s/episodes?season=%d' % (showID, show['Most Recent Season'])
-    IMDBShowSeasonPage = urlopen(showSeasonURLString)
+    IMDBShowSeasonPage = request.urlopen(showSeasonURLString)
     soup = BeautifulSoup(IMDBShowSeasonPage, 'html.parser')
     for date in soup.find_all('div', class_ = 'airdate'):
         year = 1
