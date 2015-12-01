@@ -1,6 +1,8 @@
-﻿import datetime, os, json
+﻿import datetime, os, json, requests
 from urllib import request
 from bs4 import BeautifulSoup
+
+#duplication of requests and urllib.request modules for testing purposes only
 
 currentFileDir = os.getcwd()
 CurrentDate = datetime.date.today()
@@ -21,24 +23,27 @@ def monthTranslate(month):
     return months[month]
 
 def parsePageForShowInfo(showID, showName):
-    """Pull show information from IMDB"""
+    """Parse show information from IMDB and OMDB"""
     show = {}
-    omdbresponse = request.urlopen('http://www.omdbapi.com/?i=%s&y=plot=short&r=json' % (showID))
-    readResponse = str(omdbresponse.read())
-    readResponse = readResponse[2:]
-    emDashStripper = readResponse.find('\xe2\x80\x93')
-    fixedResponse = readResponse[:emDashStripper] + '-' + readResponse[(emDashStripper + 11):]
-    print(readResponse[39:50])
 
-    """get show name (doesn't work)"""
-    show['Name'] = showName
+    """Get show information from OMDB"""
+    requestParams = {
+        'i': showID,
+        'plot': 'short',
+        'r': 'json'
+        }
+    omdbResponse = requests.get('http://www.omdbapi.com/', params = requestParams)
+    omdbText = omdbResponse.text
+    omdbText = omdbText.replace('\u2013', '-')
+    omdbJSON = json.loads(omdbText)
+
+    """get show name from OMDB"""
+    show['Name'] = omdbJSON['Title']
+
+    """Get information from IMDB"""
     mainPageURLString = 'http://www.imdb.com/title/%s' % (showID)
     IMDBShowMainPage = request.urlopen(mainPageURLString)
     soup = BeautifulSoup(IMDBShowMainPage, 'html.parser')
-    #for title in soup.find_all('title'):
-    #    titleString = title
-    #    titleString = str(titleString[:38])
-    #    print(titleString)
 
     """get the number of seasons/newest season"""
     SeasonList = []
