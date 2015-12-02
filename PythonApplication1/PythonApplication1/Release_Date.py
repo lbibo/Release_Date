@@ -158,6 +158,11 @@ def loopThroughShows(seriesList):
         print(str(int((float(status) / total) * 100)), '% done.')
     return
 
+def convertMasterToJSON(masterDict):
+    for showID in masterDict.keys():
+        del masterDict[showID]['Air Date']
+    return json.dumps(masterDict)
+
 #if 'showlist.txt' in currentFileDir:
 #    with open('showlist.txt') as savedFile:
 #        for show in savedFile:
@@ -202,3 +207,6 @@ for show in sortedShows:
     showDict = masterDict[show[1]]
     delta = showDict['Air Date'] - CurrentDate
     print('The next air date for %s is on %s.\nThat is in %d days.\n' % (showDict['Name'], str(showDict['Air Date']), delta.days))
+
+with open('shows.txt', 'w') as file:
+    file.write(convertMasterToJSON(masterDict))
