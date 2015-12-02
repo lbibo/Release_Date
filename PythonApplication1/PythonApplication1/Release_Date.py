@@ -139,12 +139,9 @@ def parsePageForShowInfo(showID):
     soupSeasonPage = getSeriesSeasonPage(showID, show['Current Season'])
 
     show['Air Date'] = getNextAirDate(soupSeasonPage)
-
-    print("The next episode of %s airs on %s." % (show['Name'], str(show['Air Date'])))
-    print("That is in %s days.\n" % str((show['Air Date'] - CurrentDate).days))
     return show
 
-showAirDates = {}
+masterDict = {}
 
 if 'showlist.txt' in currentFileDir:
     with open('showlist.txt') as savedFile:
@@ -160,9 +157,17 @@ seriesList = [
     'tt1520211',
     'tt2467372',
     ]
+print('Checking for show information...')
+status = 0
 for showID in seriesList:
+    total = len(seriesList)
     showInfo = parsePageForShowInfo(showID)
-    showAirDates[showID] = showInfo['Air Date']    
+    masterDict[showID] = {
+        'Air Date': showInfo['Air Date'],
+        'Name': showInfo['Name']
+        }
+    status += 1
+    print(str(int((float(status) / total) * 100)), '% done.')
 
 while True:
     response = input("Add a new movie or tv show?  ").lower()
@@ -171,14 +176,23 @@ while True:
         showID = getShowID(newShow)
         seriesList.append(showID)
         showInfo = parsePageForShowInfo(showID)
-        showAirDates[showID] = showInfo['Air Date']
+        masterDict[showID] = {
+            'Air Date': showInfo['Air Date'],
+            'Name': showInfo['Name']
+            }
     else:
         break
 
 deltaSort = []
 
 for showID in seriesList:
-    delta = showAirDates[showID] - CurrentDate
+    showDict = masterDict[showID]
+    delta = showDict['Air Date'] - CurrentDate
     deltaSort.append((delta, showID))
 
 sortedShows = sorted(deltaSort)
+
+for show in sortedShows:
+    showDict = masterDict[show[1]]
+    delta = showDict['Air Date'] - CurrentDate
+    print('The next air date for %s is on %s.\nThat is in %d days.\n' % (showDict['Name'], str(showDict['Air Date']), delta.days))
