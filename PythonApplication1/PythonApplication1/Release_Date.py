@@ -41,7 +41,7 @@ def writeToJSONFile(shows):
     return
 
 def getShowTitle(showID):
-    """Get show information from OMDB"""
+    """Get show title from OMDB"""
     requestParams = {
         'i': showID,
         'plot': 'short',
@@ -52,6 +52,19 @@ def getShowTitle(showID):
     omdbText = omdbText.replace('\u2013', '-')
     omdbJSON = json.loads(omdbText)
     return omdbJSON['Title']
+
+def getShowID(showTitle):
+    """Get show ID from OMDB"""
+    requestParams = {
+        't': showTitle,
+        'plot': 'short',
+        'r': 'json'
+        }
+    omdbResponse = requests.get('http://www.omdbapi.com/', params = requestParams)
+    omdbText = omdbResponse.text
+    omdbText = omdbText.replace('\u2013', '-')
+    omdbJSON = json.loads(omdbText)
+    return omdbJSON['imdbID']
 
 def getSeasons(soupMainPage, showID):
     """get the number of seasons from the show's main page on IMDB"""
@@ -131,22 +144,12 @@ def parsePageForShowInfo(showID):
     print("That is in %s days.\n" % str((show['Air Date'] - CurrentDate).days))
     return show
 
-#def addShowToList(show):
-#    return
-
 if 'showlist.txt' in currentFileDir:
     with open('showlist.txt') as savedFile:
         for movie in savedFile:
             movieList.append(movie)
 
-#while True:
-#    response = input("Add a new movie or tv show?\n(Doesn't work at the moment)").lower()
-#    if response == 'y' or response == 'yes':
-#        newMovie = input("What show?  ").lower()
-#        break
-#    else:
-#        break
-
+#Only used until JSOn information saving is implemented
 seriesList = [
     'tt0944947',
     'tt4159076',
@@ -158,6 +161,15 @@ seriesList = [
 
 for series in seriesList:
     parsePageForShowInfo(series)
+
+while True:
+    response = input("Add a new movie or tv show?  ").lower()
+    if response == 'y' or response == 'yes':
+        newShow = input("What show?  ").lower()
+        showID = getShowID(newShow)
+        parsePageForShowInfo(showID)
+    else:
+        break
 
 #deltaSort = []
 
