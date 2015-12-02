@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 
 #duplication of requests and urllib.request modules for testing purposes only
 
+masterDict = {}
 currentFileDir = os.getcwd()
 CurrentDate = datetime.date.today()
 
@@ -141,12 +142,26 @@ def parsePageForShowInfo(showID):
     show['Air Date'] = getNextAirDate(soupSeasonPage)
     return show
 
-masterDict = {}
+def loopThroughShows(seriesList):
+    global masterDict
+    """Loop through list of showIDs and pull info"""
+    print('Checking for show information...')
+    status = 0
+    for showID in seriesList:
+        total = len(seriesList)
+        showInfo = parsePageForShowInfo(showID)
+        masterDict[showID] = {
+            'Air Date': showInfo['Air Date'],
+            'Name': showInfo['Name']
+            }
+        status += 1
+        print(str(int((float(status) / total) * 100)), '% done.')
+    return
 
-if 'showlist.txt' in currentFileDir:
-    with open('showlist.txt') as savedFile:
-        for show in savedFile:
-            shows.append(show)
+#if 'showlist.txt' in currentFileDir:
+#    with open('showlist.txt') as savedFile:
+#        for show in savedFile:
+#            shows.append(show)
 
 #Only used until JSON information saving is implemented
 seriesList = [
@@ -157,17 +172,8 @@ seriesList = [
     'tt1520211',
     'tt2467372',
     ]
-print('Checking for show information...')
-status = 0
-for showID in seriesList:
-    total = len(seriesList)
-    showInfo = parsePageForShowInfo(showID)
-    masterDict[showID] = {
-        'Air Date': showInfo['Air Date'],
-        'Name': showInfo['Name']
-        }
-    status += 1
-    print(str(int((float(status) / total) * 100)), '% done.')
+
+loopThroughShows(seriesList)
 
 while True:
     response = input("Add a new movie or tv show?  ").lower()
