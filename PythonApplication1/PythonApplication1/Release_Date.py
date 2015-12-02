@@ -7,6 +7,18 @@ from bs4 import BeautifulSoup
 currentFileDir = os.getcwd()
 CurrentDate = datetime.date.today()
 
+def getSeriesMainPage(showID):
+    """Get Series Main Page"""
+    URLString = 'http://www.imdb.com/title/%s' % (showID)
+    mainPage = request.urlopen(URLString)
+    return BeautifulSoup(mainPage, 'html.parser')
+
+def getSeriesSeasonPage(showID, season):
+     """Get Page of selected season"""
+     URLString = 'http://www.imdb.com/title/%s/episodes?season=%d' % (showID, season)
+     seasonPage = request.urlopen(URLString)
+     return BeautifulSoup(seasonPage, 'html.parser')
+
 def monthTranslate(month):
     months = {'Jan.': 1,
               'Feb.': 2,
@@ -22,10 +34,13 @@ def monthTranslate(month):
               'Dec.': 12}
     return months[month]
 
-def parsePageForShowInfo(showID, showName):
-    """Parse show information from IMDB and OMDB"""
-    show = {}
+def writeToJSONFile(shows):
+    """take show dictionary and export to JSON file"""
+    #Add code to export show dictionary to JSON file
 
+    return
+
+def getShowTitle(showID):
     """Get show information from OMDB"""
     requestParams = {
         'i': showID,
@@ -36,33 +51,32 @@ def parsePageForShowInfo(showID, showName):
     omdbText = omdbResponse.text
     omdbText = omdbText.replace('\u2013', '-')
     omdbJSON = json.loads(omdbText)
+    return omdbJSON['Title']
 
-    """get show name from OMDB"""
-    show['Name'] = omdbJSON['Title']
-
-    """Get information from IMDB"""
-    mainPageURLString = 'http://www.imdb.com/title/%s' % (showID)
-    IMDBShowMainPage = request.urlopen(mainPageURLString)
-    soup = BeautifulSoup(IMDBShowMainPage, 'html.parser')
-
-    """get the number of seasons/newest season"""
+def getSeasons(soupMainPage, showID):
+    """get the number of seasons from the show's main page on IMDB"""
     SeasonList = []
-    for link in soup.find_all('a'):
+    for link in soupMainPage.find_all('a'):
         linkString = link.get('href')
         if type(linkString) == str:
             if ('/title/%s/episodes?season=' % showID) in linkString:
                 linkStringSplit = linkString.split('_')
                 SeasonList.append(int(linkStringSplit[-1]))
     SeasonList.sort()
-    show['Most Recent Season'] = SeasonList[-1]
+    return SeasonList
 
+def getCurrentSeason(soup, showID):
+    numberOfSeasons = getSeasons(soup, showID)
+    #Add code to check if current season is last one listed on IMDB
+
+    return numberOfSeasons[-1]
+
+def getNextAirDate(soupSeasonPage):
     """Get the airdate for the next episode"""
     airdates = []
     bestDate = []
-    showSeasonURLString = 'http://www.imdb.com/title/%s/episodes?season=%d' % (showID, show['Most Recent Season'])
-    IMDBShowSeasonPage = request.urlopen(showSeasonURLString)
-    soup = BeautifulSoup(IMDBShowSeasonPage, 'html.parser')
-    for date in soup.find_all('div', class_ = 'airdate'):
+
+    for date in soupSeasonPage.find_all('div', class_ = 'airdate'):
         year = 1
         month = 1
         day = 1
@@ -88,15 +102,30 @@ def parsePageForShowInfo(showID, showName):
                 airdates.append(datetime.date(year, month, day))
 
     bestDateDelta = CurrentDate - airdates[0]
-    show['Air Date'] = airdates[0]
+    showDate = airdates[0]
     for date in airdates:
         delta = CurrentDate - date
         if (CurrentDate > date):
             continue
         elif (date - CurrentDate) < bestDateDelta:
             bestDateDelta = delta
-            show['Air Date'] = date
+            showDate = date
             continue
+    return showDate
+
+def parsePageForShowInfo(showID):
+    """Parse show information from IMDB"""
+    show = {}
+
+    soupMainPage = getSeriesMainPage(showID)
+
+    show['Name'] = getShowTitle(showID)
+
+    show['Current Season'] = getCurrentSeason(soupMainPage, showID)
+
+    soupSeasonPage = getSeriesSeasonPage(showID, show['Current Season'])
+
+    show['Air Date'] = getNextAirDate(soupSeasonPage)
 
     print("The next episode of %s airs on %s." % (show['Name'], str(show['Air Date'])))
     print("That is in %s days.\n" % str((show['Air Date'] - CurrentDate).days))
@@ -119,16 +148,16 @@ if 'showlist.txt' in currentFileDir:
 #        break
 
 seriesList = [
-    ('tt0944947', 'Game of Thrones'),
-    ('tt4159076', 'Dark Matter'),
-    ('tt1486217', 'Archer'),
-    ('tt3339966', 'Unbreakable Kimmy Schmidt'),
-    ('tt1520211', 'The Walking Dead'),
-    ('tt2467372', 'Brooklyn Nine-Nine')
+    'tt0944947',
+    'tt4159076',
+    'tt1486217',
+    'tt3339966',
+    'tt1520211',
+    'tt2467372',
     ]
 
 for series in seriesList:
-    parsePageForShowInfo(series[0], series[1])
+    parsePageForShowInfo(series)
 
 #deltaSort = []
 
