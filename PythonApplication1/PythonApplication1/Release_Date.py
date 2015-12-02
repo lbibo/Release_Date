@@ -144,12 +144,14 @@ def parsePageForShowInfo(showID):
     print("That is in %s days.\n" % str((show['Air Date'] - CurrentDate).days))
     return show
 
+showAirDates = {}
+
 if 'showlist.txt' in currentFileDir:
     with open('showlist.txt') as savedFile:
-        for movie in savedFile:
-            movieList.append(movie)
+        for show in savedFile:
+            shows.append(show)
 
-#Only used until JSOn information saving is implemented
+#Only used until JSON information saving is implemented
 seriesList = [
     'tt0944947',
     'tt4159076',
@@ -158,27 +160,25 @@ seriesList = [
     'tt1520211',
     'tt2467372',
     ]
-
-for series in seriesList:
-    parsePageForShowInfo(series)
+for showID in seriesList:
+    showInfo = parsePageForShowInfo(showID)
+    showAirDates[showID] = showInfo['Air Date']    
 
 while True:
     response = input("Add a new movie or tv show?  ").lower()
     if response == 'y' or response == 'yes':
         newShow = input("What show?  ").lower()
         showID = getShowID(newShow)
-        parsePageForShowInfo(showID)
+        seriesList.append(showID)
+        showInfo = parsePageForShowInfo(showID)
+        showAirDates[showID] = showInfo['Air Date']
     else:
         break
 
-#deltaSort = []
+deltaSort = []
 
-#for show in ShowDates.keys():
-#    delta = ShowDates[show] - CurrentDate
-#    deltaSort.append((delta, show))
+for showID in seriesList:
+    delta = showAirDates[showID] - CurrentDate
+    deltaSort.append((delta, showID))
 
-#sortedShows = sorted(deltaSort)
-
-#for show in sortedShows:
-#    print('\n', show[1], ': ', ShowDates[show[1]])
-#    print('Starts in: ', show[0])
+sortedShows = sorted(deltaSort)
