@@ -89,6 +89,7 @@ def getNextAirDate(soupSeasonPage):
     """Get the airdate for the next episode"""
     airdates = []
     bestDate = []
+    exactDate = False
 
     for date in soupSeasonPage.find_all('div', class_ = 'airdate'):
         year = 1
@@ -103,6 +104,7 @@ def getNextAirDate(soupSeasonPage):
             if len(bestDate) <= 3:
                 bestDate = [year, month, day]
                 airdates.append(datetime.date(year, month, day))
+                exactDate = True
         elif len(splitDate) == 2:
             month = monthTranslate(splitDate[0])
             year = int(splitDate[1])
@@ -125,37 +127,44 @@ def getNextAirDate(soupSeasonPage):
             bestDateDelta = delta
             showDate = date
             continue
-    return showDate
+    return (showDate, exactDate)
 
-def parsePageForShowInfo(showID):
+def parsePageForShowInfo(showID, name = 0):
     """Parse show information from IMDB"""
     show = {}
 
     soupMainPage = getSeriesMainPage(showID)
 
-    show['Name'] = getShowTitle(showID)
+    if name == 0:
+        show['Name'] = getShowTitle(showID)
+    else:
+        show['Name'] = name
 
     show['Current Season'] = getCurrentSeason(soupMainPage, showID)
 
     soupSeasonPage = getSeriesSeasonPage(showID, show['Current Season'])
 
-    show['Air Date'] = getNextAirDate(soupSeasonPage)
+    airDate = getNextAirDate(soupSeasonPage)
+    show['Air Date'] = airDate[0]
+    show['Exact Date'] = airDate[1]
+
     return show
 
 def loopThroughShows(seriesList):
     global masterDict
     """Loop through list of showIDs and pull info"""
-    print('Checking for show information...')
+    print('\nChecking for show information...')
     status = 0
     for showID in seriesList:
         total = len(seriesList)
         showInfo = parsePageForShowInfo(showID)
         masterDict[showID] = {
             'Air Date': showInfo['Air Date'],
+            'Exact Date': showInfo['Exact Date'],
             'Name': showInfo['Name']
             }
         status += 1
-        print(str(int((float(status) / total) * 100)), '% done.')
+        print(str(int((float(status) / total) * 100)), '%')
     return
 
 def convertMasterToJSON(masterDict):
@@ -163,36 +172,42 @@ def convertMasterToJSON(masterDict):
         del masterDict[showID]['Air Date']
     return json.dumps(masterDict)
 
-#if 'showlist.txt' in currentFileDir:
-#    with open('showlist.txt') as savedFile:
-#        for show in savedFile:
-#            shows.append(show)
-
-#Only used until JSON information saving is implemented
-seriesList = [
-    'tt0944947',
-    'tt4159076',
-    'tt1486217',
-    'tt3339966',
-    'tt1520211',
-    'tt2467372',
-    ]
-
-loopThroughShows(seriesList)
+seriesList = []
+if os.path.isfile('shows.txt'):
+    with open('shows.txt') as savedFile:
+        showsJSON = json.load(savedFile)
+        print("List of shows to include in search:\n")
+        for show in showsJSON.keys():
+            print(showsJSON[show]['Name'])
+            seriesList.append(show)
 
 while True:
-    response = input("Add a new movie or tv show?  ").lower()
+    response = input("\nAdd a new movie or tv show?  ").lower()
     if response == 'y' or response == 'yes':
         newShow = input("What show?  ").lower()
         showID = getShowID(newShow)
-        seriesList.append(showID)
-        showInfo = parsePageForShowInfo(showID)
-        masterDict[showID] = {
-            'Air Date': showInfo['Air Date'],
-            'Name': showInfo['Name']
-            }
-    else:
+        showTitle = getShowTitle(showID)
+        secondResponse = input('Found "%s".  Is that correct?  ' % (showTitle)).lower()
+        if secondResponse == 'n' or secondResponse == 'no':
+            continue
+        elif secondResponse == 'y' or secondResponse == 'yes':
+            seriesList.append(showID)
+            showInfo = parsePageForShowInfo(showID, name = showTitle)
+            masterDict[showID] = {
+                'Air Date': showInfo['Air Date'],
+                'Exact Date': showInfo['Exact Date'],
+                'Name': showInfo['Name']
+                }
+            break
+        else:
+            print('Please enter "yes" or "no".')
+            continue
+    elif response == 'n' or response == 'no':
         break
+    else:
+        print('Please enter "yes" or "no".')
+
+loopThroughShows(seriesList)
 
 deltaSort = []
 
@@ -203,10 +218,28 @@ for showID in seriesList:
 
 sortedShows = sorted(deltaSort)
 
+print('\nAir Dates:\n')
 for show in sortedShows:
     showDict = masterDict[show[1]]
     delta = showDict['Air Date'] - CurrentDate
-    print('The next air date for %s is on %s.\nThat is in %d days.\n' % (showDict['Name'], str(showDict['Air Date']), delta.days))
+    if delta.days < 0:
+        print('%s:  There are no new episodes set for release.\n' % showDict['Name'])
+    elif delta.days == 0:
+        print('%s:  The newest episode airs today!\n' % showDict['Name'])
+    else:
+        if showDict['Exact Date']:
+            print('%s:  %s/%s/%s.  That is in %d days.\n' % (showDict['Name'],
+                                                             str(showDict['Air Date'].month),
+                                                             str(showDict['Air Date'].day),
+                                                             str(showDict['Air Date'].year),
+                                                             delta.days))
+        else:
+            print('%s:  No earlier than %s/%s/%s.  There is no exact date set.\n' % (showDict['Name'],
+                                                                                     str(showDict['Air Date'].month),
+                                                                                     str(showDict['Air Date'].day),
+                                                                                     str(showDict['Air Date'].year)
+                                                                                     )
+                  )
 
 with open('shows.txt', 'w') as file:
     file.write(convertMasterToJSON(masterDict))
