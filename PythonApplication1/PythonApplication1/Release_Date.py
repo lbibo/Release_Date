@@ -47,12 +47,6 @@ def monthTranslate(month):
               }
     return months[month]
 
-def writeToJSONFile(shows):
-    """take show dictionary and export to JSON file"""
-    #Add code to export show dictionary to JSON file
-
-    return
-
 def getShowTitle(showID):
     """Get show title from OMDB"""
     requestParams = {
@@ -218,7 +212,7 @@ def parseIMDBForShowInfo(showID, isMovie, name):
         show['Is Movie'] = True
     else:
         airDate = getCurrentSeasonAndNextAirDate(soupMainPage, showID)
-        #Not sure if 'Current Season' is necessary - saves current season in show dictionary
+        #Not sure if 'Current Season' is useful - saves current season in show dictionary
         show['Current Season'] = airDate[0]
         show['Air Date'] = airDate[1][0]
         show['Exact Date'] = airDate[1][1]
