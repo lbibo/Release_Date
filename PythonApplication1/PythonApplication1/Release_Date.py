@@ -22,17 +22,29 @@ def getSeriesSeasonPage(showID, season):
 
 def monthTranslate(month):
     months = {'Jan.': 1,
+              'January': 1,
               'Feb.': 2,
+              'February': 2,
               'Mar.': 3,
+              'March': 3,
               'Apr.': 4,
+              'April': 4,
               'May': 5,
+              'Jun.': 6,
               'June': 6,
+              'Jul.': 7,
               'July': 7,
               'Aug.': 8,
+              'August': 8,
               'Sep.': 9,
+              'September': 9,
               'Oct.': 10,
+              'October': 10,
               'Nov.': 11,
-              'Dec.': 12}
+              'November': 11,
+              'Dec.': 12,
+              'December': 12
+              }
     return months[month]
 
 def writeToJSONFile(shows):
@@ -67,6 +79,30 @@ def getShowID(showTitle):
     omdbJSON = json.loads(omdbText)
     return omdbJSON['imdbID']
 
+def getMovieOrSeries(showID):
+    """Get type from OMDB"""
+    requestParams = {
+        'i': showID,
+        'plot': 'short',
+        'r': 'json'
+        }
+    omdbResponse = requests.get('http://www.omdbapi.com/', params = requestParams)
+    omdbText = omdbResponse.text
+    omdbText = omdbText.replace('\u2013', '-')
+    omdbJSON = json.loads(omdbText)
+    return omdbJSON['Type'].lower()
+
+
+def getMovieReleaseDate(soupMainPage, showID):
+    for title in soupMainPage.find_all('a', title = 'See all release dates'):
+        rawDate = title.get_text()
+        rawDateSplit = rawDate.split(' ')
+        day = int(rawDateSplit[1])
+        month = int(monthTranslate(rawDateSplit[2]))
+        yearSplit = rawDateSplit[3].split('\n')
+        year = int(yearSplit[0])
+        return datetime.date(year, month, day)
+        
 def getSeasons(soupMainPage, showID):
     """get the number of seasons from the show's main page on IMDB"""
     SeasonList = []
@@ -79,89 +115,129 @@ def getSeasons(soupMainPage, showID):
     SeasonList.sort()
     return SeasonList
 
-def getCurrentSeason(soup, showID):
-    numberOfSeasons = getSeasons(soup, showID)
-    #Add code to check if current season is last one listed on IMDB
-
-    return numberOfSeasons[-1]
-
 def getNextAirDate(soupSeasonPage):
-    """Get the airdate for the next episode"""
+    """Get the air date for the next episode of the given season page"""
     airdates = []
-    bestDate = []
+    bestDate = [0, datetime.date(1,1,1)]
     exactDate = False
 
-    for date in soupSeasonPage.find_all('div', class_ = 'airdate'):
+    rawAirDateList = soupSeasonPage.find_all('div', class_ = 'airdate')
+
+    for date in rawAirDateList:
         year = 1
         month = 1
         day = 1
         dateString = date.string.strip()
         splitDate = dateString.split(' ')
+
         if len(splitDate) == 3:
             day = int(splitDate[0])
             month = monthTranslate(splitDate[1])
             year = int(splitDate[2])
-            if len(bestDate) <= 3:
-                bestDate = [year, month, day]
-                airdates.append(datetime.date(year, month, day))
+            formattedDate = datetime.date(year, month, day)
+
+            if formattedDate < CurrentDate:
+                continue
+            else:
                 exactDate = True
+                airdates.append(datetime.date(year, month, day))
+            if bestDate[0] < 3:
+                bestDate[0] = 3
+                bestDate[1] = datetime.date(year, month, day)
+
         elif len(splitDate) == 2:
             month = monthTranslate(splitDate[0])
             year = int(splitDate[1])
-            if len(bestDate) <= 2:
-                bestDate = [year, month]
+            formattedDate = datetime.date(year, month, day)
+
+            if formattedDate < CurrentDate:
+                continue
+            else:
                 airdates.append(datetime.date(year, month, day))
+            if bestDate[0] < 2:
+                bestDate[0] = 2
+                bestDate[1] = datetime.date(year, month, day)
+
         elif len(splitDate) == 1:
             year = int(splitDate[0])
-            if len(bestDate) <= 1:
-                bestDate = [year]
-                airdates.append(datetime.date(year, month, day))
+            formattedDate = datetime.date(year, month, day)
 
-    bestDateDelta = CurrentDate - airdates[0]
-    showDate = airdates[0]
+            if formattedDate < CurrentDate:
+                continue
+            else:
+                airdates.append(datetime.date(year, month, day))
+            if bestDate[0] < 1:
+                bestDate[0] = 1
+                bestDate[1] = datetime.date(year, month, day)
+
+    bestDateDelta = CurrentDate - bestDate[1]
+    showDate = bestDate[1]
     for date in airdates:
-        delta = CurrentDate - date
         if (CurrentDate > date):
             continue
         elif (date - CurrentDate) < bestDateDelta:
+            delta = date - CurrentDate
             bestDateDelta = delta
             showDate = date
             continue
+
     return (showDate, exactDate)
 
-def parsePageForShowInfo(showID, name = 0):
+def getCurrentSeasonAndNextAirDate(soupMainPage, showID):
+    """Return tuple of (current season, (next air date, whether it is an exact date))"""
+    seasonList = getSeasons(soupMainPage, showID)
+    print(seasonList)
+
+    if len(seasonList) == 1:
+        return (seasonList[0], getSeriesSeasonPage(showID, seasonList[0]))
+
+    soupPriorSeason = getSeriesSeasonPage(showID, seasonList[-2])
+    priorSeasonAirDate = getNextAirDate(soupPriorSeason)
+    if priorSeasonAirDate[0] < CurrentDate:
+        soupLatestSeason = getSeriesSeasonPage(showID, seasonList[-1])
+        latestSeasonAirDate = getNextAirDate(soupLatestSeason)
+        return (seasonList[-1], latestSeasonAirDate)
+    else:
+        return (seasonList[-1], priorSeasonAirDate)
+
+def parseIMDBForShowInfo(showID, isMovie, name):
     """Parse show information from IMDB"""
     show = {}
 
     soupMainPage = getSeriesMainPage(showID)
 
-    if name == 0:
-        show['Name'] = getShowTitle(showID)
-    else:
+    if name:
         show['Name'] = name
+        print('Name transferred')
+    else:
+        show['Name'] = getShowTitle(showID)
 
-    show['Current Season'] = getCurrentSeason(soupMainPage, showID)
-
-    soupSeasonPage = getSeriesSeasonPage(showID, show['Current Season'])
-
-    airDate = getNextAirDate(soupSeasonPage)
-    show['Air Date'] = airDate[0]
-    show['Exact Date'] = airDate[1]
+    if isMovie:
+        show['Air Date'] = getMovieReleaseDate(soupMainPage, showID)
+        show['Exact Date'] = True
+        show['Is Movie'] = True
+    else:
+        airDate = getCurrentSeasonAndNextAirDate(soupMainPage, showID)
+        #Not sure if 'Current Season' is necessary - saves current season in show dictionary
+        show['Current Season'] = airDate[0]
+        show['Air Date'] = airDate[1][0]
+        show['Exact Date'] = airDate[1][1]
+        show['Is Movie'] = False
 
     return show
 
-def loopThroughShows(seriesList):
-    global masterDict
+def loopThroughShows(masterDict):
     """Loop through list of showIDs and pull info"""
     print('\nChecking for show information...')
     status = 0
-    for showID in seriesList:
-        total = len(seriesList)
-        showInfo = parsePageForShowInfo(showID)
+    for showID in masterDict.keys():
+        total = len(masterDict)
+        showInfo = parseIMDBForShowInfo(showID, masterDict[showID]['Is Movie'], masterDict[showID]['Name'])
         masterDict[showID] = {
             'Air Date': showInfo['Air Date'],
             'Exact Date': showInfo['Exact Date'],
-            'Name': showInfo['Name']
+            'Name': showInfo['Name'],
+            'Is Movie': showInfo['Is Movie']
             }
         status += 1
         print(str(int((float(status) / total) * 100)), '%')
@@ -172,17 +248,19 @@ def convertMasterToJSON(masterDict):
         del masterDict[showID]['Air Date']
     return json.dumps(masterDict)
 
-seriesList = []
 if os.path.isfile('shows.txt'):
     with open('shows.txt') as savedFile:
         showsJSON = json.load(savedFile)
         print("List of shows to include in search:\n")
         for show in showsJSON.keys():
             print(showsJSON[show]['Name'])
-            seriesList.append(show)
+            masterDict[show] = {
+                'Name': showsJSON[show]['Name'],
+                'Is Movie': showsJSON[show]['Is Movie']
+                }
 
 while True:
-    response = input("\nAdd a new movie or tv show?  ").lower()
+    response = input("\nAdd a movie or tv show?  ").lower()
     if response == 'y' or response == 'yes':
         newShow = input("What show?  ").lower()
         showID = getShowID(newShow)
@@ -191,14 +269,19 @@ while True:
         if secondResponse == 'n' or secondResponse == 'no':
             continue
         elif secondResponse == 'y' or secondResponse == 'yes':
-            seriesList.append(showID)
-            showInfo = parsePageForShowInfo(showID, name = showTitle)
+            isMovieBool = getMovieOrSeries(showID).lower()
+            if isMovieBool == 'movie':
+                isMovieBool = True
+            else:
+                isMovieBool = False
+            showInfo = parseIMDBForShowInfo(showID, isMovieBool, showTitle)
             masterDict[showID] = {
                 'Air Date': showInfo['Air Date'],
                 'Exact Date': showInfo['Exact Date'],
-                'Name': showInfo['Name']
+                'Name': showInfo['Name'],
+                'Is Movie': isMovieBool
                 }
-            break
+            continue
         else:
             print('Please enter "yes" or "no".')
             continue
@@ -207,13 +290,12 @@ while True:
     else:
         print('Please enter "yes" or "no".')
 
-loopThroughShows(seriesList)
+loopThroughShows(masterDict)
 
 deltaSort = []
 
-for showID in seriesList:
-    showDict = masterDict[showID]
-    delta = showDict['Air Date'] - CurrentDate
+for showID, dict in masterDict.items():
+    delta = dict['Air Date'] - CurrentDate
     deltaSort.append((delta, showID))
 
 sortedShows = sorted(deltaSort)
