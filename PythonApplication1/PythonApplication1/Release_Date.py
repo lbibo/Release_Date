@@ -180,7 +180,6 @@ def getNextAirDate(soupSeasonPage):
 def getCurrentSeasonAndNextAirDate(soupMainPage, showID):
     """Return tuple of (current season, (next air date, whether it is an exact date))"""
     seasonList = getSeasons(soupMainPage, showID)
-    print(seasonList)
 
     if len(seasonList) == 1:
         return (seasonList[0], getSeriesSeasonPage(showID, seasonList[0]))
@@ -202,7 +201,6 @@ def parseIMDBForShowInfo(showID, isMovie, name):
 
     if name:
         show['Name'] = name
-        print('Name transferred')
     else:
         show['Name'] = getShowTitle(showID)
 
@@ -319,3 +317,5 @@ for show in sortedShows:
 
 with open('shows.txt', 'w') as file:
     file.write(convertMasterToJSON(masterDict))
+
+print('Press any key to exit.')
