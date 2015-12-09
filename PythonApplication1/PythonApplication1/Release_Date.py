@@ -318,4 +318,4 @@ for show in sortedShows:
 with open('shows.txt', 'w') as file:
     file.write(convertMasterToJSON(masterDict))
 
-print('Press any key to exit.')
+input('Press any key to exit.')
