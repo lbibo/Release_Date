@@ -88,14 +88,31 @@ def getMovieOrSeries(showID):
 
 
 def getMovieReleaseDate(soupMainPage, showID):
-    for title in soupMainPage.find_all('a', title = 'See all release dates'):
-        rawDate = title.get_text()
-        rawDateSplit = rawDate.split(' ')
-        day = int(rawDateSplit[1])
-        month = int(monthTranslate(rawDateSplit[2]))
-        yearSplit = rawDateSplit[3].split('\n')
-        year = int(yearSplit[0])
-        return datetime.date(year, month, day)
+    """Parse IMDB page for release date. Currently looks for 'Release Date' under 'txt-block' div."""
+    exactDate = False
+
+    for div in soupMainPage.find_all('div', class_ = 'txt-block'):
+        divText = str(div)
+        if not "Release Date:" in divText:
+            continue
+        else:
+            """Find the start and end of the date string (begins after the </h4> tag, ends before the next open tag)"""
+            dateStart = divText.find('</h4>')
+            dateString = divText[(dateStart + 6):]
+            dateEnd = dateString.find('<')
+            dateString = dateString[:dateEnd]
+
+            """Split the date string by spaces, convert the string to a datetime object"""
+            dateStringSplit = dateString.split(' ')
+            day = int(dateStringSplit[0])
+            month = int(monthTranslate(dateStringSplit[1]))
+            year = int(dateStringSplit[2])
+
+            exactDate = True
+
+            return (datetime.date(year, month, day), exactDate)
+
+    return (datetime.date(1, 1, 1), exactDate)
         
 def getSeasons(soupMainPage, showID):
     """get the number of seasons from the show's main page on IMDB"""
@@ -205,8 +222,9 @@ def parseIMDBForShowInfo(showID, isMovie, name):
         show['Name'] = getShowTitle(showID)
 
     if isMovie:
-        show['Air Date'] = getMovieReleaseDate(soupMainPage, showID)
-        show['Exact Date'] = True
+        releaseInfo = getMovieReleaseDate(soupMainPage, showID)
+        show['Air Date'] = releaseInfo[0]
+        show['Exact Date'] = releaseInfo[1]
         show['Is Movie'] = True
     else:
         airDate = getCurrentSeasonAndNextAirDate(soupMainPage, showID)
